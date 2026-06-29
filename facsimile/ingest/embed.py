@@ -9,10 +9,14 @@ The public surface is the ``Embedder`` protocol. Two implementations ship:
 
 Both return the same shape: ``list[list[list[float]]]`` — one inner list per
 image, each containing *n_patches* vectors of length *dim* (128 for ColPali).
+
+``embed_query`` maps a text string to the same patch-vector space so that
+late-interaction MaxSim scoring can be applied between query and page.
 """
 
 from __future__ import annotations
 
+import hashlib
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -23,13 +27,21 @@ COLPALI_DIM = 128
 
 @runtime_checkable
 class Embedder(Protocol):
-    """Anything that can turn page images into patch-vector lists."""
+    """Anything that can turn page images and text queries into patch-vector lists."""
 
     def embed_images(self, images: list[Image.Image]) -> list[list[list[float]]]:
         """Return patch vectors for each image.
 
         Shape per image: ``(n_patches, dim)``.  ``n_patches`` may vary
         between images (depends on image size and the model's patch stride).
+        """
+        ...
+
+    def embed_query(self, text: str) -> list[list[float]]:
+        """Return patch vectors for a text query.
+
+        Shape: ``(n_query_patches, dim)``.  Vectors live in the same space
+        as image patches so MaxSim can score query vs page directly.
         """
         ...
 
@@ -56,6 +68,12 @@ class StubEmbedder:
             self._rng.standard_normal((self._n_patches, self._dim)).tolist()
             for _ in images
         ]
+
+    def embed_query(self, text: str) -> list[list[float]]:
+        """Return deterministic random query vectors seeded from the query text."""
+        seed = int(hashlib.md5(text.encode()).hexdigest(), 16) % (2**32)
+        rng = np.random.default_rng(seed)
+        return rng.standard_normal((self._n_patches, self._dim)).tolist()
 
 
 class ColPaliEmbedder:
@@ -94,6 +112,12 @@ class ColPaliEmbedder:
             embeddings = self._model(**batch)  # (batch, n_patches, dim)
         return [emb.float().cpu().tolist() for emb in embeddings]
 
+    def embed_query(self, text: str) -> list[list[float]]:
+        batch = self._processor.process_queries([text]).to(self._device)
+        with self._torch.no_grad():
+            embeddings = self._model(**batch)
+        return embeddings[0].float().cpu().tolist()
+
 
 class ColQwenEmbedder:
     """ColQwen2 embedder backed by ``colpali-engine``.
@@ -129,3 +153,9 @@ class ColQwenEmbedder:
         with self._torch.no_grad():
             embeddings = self._model(**batch)
         return [emb.float().cpu().tolist() for emb in embeddings]
+
+    def embed_query(self, text: str) -> list[list[float]]:
+        batch = self._processor.process_queries([text]).to(self._device)
+        with self._torch.no_grad():
+            embeddings = self._model(**batch)
+        return embeddings[0].float().cpu().tolist()
