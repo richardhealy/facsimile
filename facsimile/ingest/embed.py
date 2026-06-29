@@ -23,13 +23,21 @@ COLPALI_DIM = 128
 
 @runtime_checkable
 class Embedder(Protocol):
-    """Anything that can turn page images into patch-vector lists."""
+    """Anything that can turn page images and text queries into patch-vector lists."""
 
     def embed_images(self, images: list[Image.Image]) -> list[list[list[float]]]:
         """Return patch vectors for each image.
 
         Shape per image: ``(n_patches, dim)``.  ``n_patches`` may vary
         between images (depends on image size and the model's patch stride).
+        """
+        ...
+
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        """Return token vectors for each query string.
+
+        Shape per query: ``(n_tokens, dim)``.  Used as the query side of
+        late-interaction MaxSim scoring.
         """
         ...
 
@@ -55,6 +63,12 @@ class StubEmbedder:
         return [
             self._rng.standard_normal((self._n_patches, self._dim)).tolist()
             for _ in images
+        ]
+
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        return [
+            self._rng.standard_normal((self._n_patches, self._dim)).tolist()
+            for _ in texts
         ]
 
 
@@ -94,6 +108,12 @@ class ColPaliEmbedder:
             embeddings = self._model(**batch)  # (batch, n_patches, dim)
         return [emb.float().cpu().tolist() for emb in embeddings]
 
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        batch = self._processor.process_queries(texts).to(self._device)
+        with self._torch.no_grad():
+            embeddings = self._model(**batch)  # (batch, n_tokens, dim)
+        return [emb.float().cpu().tolist() for emb in embeddings]
+
 
 class ColQwenEmbedder:
     """ColQwen2 embedder backed by ``colpali-engine``.
@@ -126,6 +146,12 @@ class ColQwenEmbedder:
 
     def embed_images(self, images: list[Image.Image]) -> list[list[list[float]]]:
         batch = self._processor.process_images(images).to(self._device)
+        with self._torch.no_grad():
+            embeddings = self._model(**batch)
+        return [emb.float().cpu().tolist() for emb in embeddings]
+
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        batch = self._processor.process_queries(texts).to(self._device)
         with self._torch.no_grad():
             embeddings = self._model(**batch)
         return [emb.float().cpu().tolist() for emb in embeddings]
