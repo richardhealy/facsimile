@@ -12,7 +12,7 @@ Visual document RAG using late-interaction page-image embeddings.
 
 ## Status
 
-M0 (Scaffold) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
+M0 (Scaffold) and M1 (Visual embedding) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
 
 ## Requirements
 
@@ -22,7 +22,11 @@ M0 (Scaffold) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
 ## Install
 
 ```bash
+# Core + tests
 pip install -e ".[dev]"
+
+# With real ColPali/ColQwen inference (requires GPU for practical speed)
+pip install -e ".[embed]"
 ```
 
 ## Run tests

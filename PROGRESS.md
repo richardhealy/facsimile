@@ -3,7 +3,7 @@
 ## Implementation
 
 - [x] **M0 — Scaffold**: project structure, PDF rasterization (`ingest/rasterize.py`), Qdrant multivector store (`index/store.py`), CI (GitHub Actions), 18 tests passing.
-- [ ] **M1 — Visual embedding**: late-interaction page embeddings (ColPali/ColQwen) indexed per page.
+- [x] **M1 — Visual embedding**: `Embedder` protocol, `StubEmbedder` (tests/CI), `ColPaliEmbedder` + `ColQwenEmbedder` (optional `embed` extra); `ingest_pdf` / `ingest_and_store` pipeline; 35 tests passing.
 - [ ] **M2 — Retrieval**: late-interaction MaxSim scoring, top-page selection via stored embeddings.
 - [ ] **M3 — Vision synthesis**: vision-LLM answers from retrieved page images with page citations.
 - [ ] **M4 — Benchmark**: table/chart question set, visual-vs-text comparison numbers.
