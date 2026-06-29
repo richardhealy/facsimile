@@ -1,18 +1,22 @@
 """Late-interaction visual embedding: page images → per-patch vectors.
 
-The public surface is the ``Embedder`` protocol. Two implementations ship:
+The public surface is the ``Embedder`` protocol for indexing and the
+``QueryEmbedder`` protocol for text-query embedding. Two implementations ship
+for each:
 
-- ``StubEmbedder`` — deterministic random vectors, no model download.  Used
-  in tests and as a placeholder when the heavy ML deps are not installed.
-- ``ColPaliEmbedder`` — wraps ``colpali-engine`` (ColPali / ColQwen2).
+- ``StubEmbedder`` / ``StubQueryEmbedder`` — deterministic random vectors, no
+  model download.  Used in tests and CI.
+- ``ColPaliEmbedder`` / ``ColQwenEmbedder`` — wraps ``colpali-engine``.
   Requires ``pip install facsimile[embed]``.
 
-Both return the same shape: ``list[list[list[float]]]`` — one inner list per
-image, each containing *n_patches* vectors of length *dim* (128 for ColPali).
+Both protocols return ``list[list[list[float]]]``: one inner list per
+image/query, each containing *n_patches* (or *n_tokens*) vectors of length
+*dim* (128 for ColPali).
 """
 
 from __future__ import annotations
 
+import hashlib
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -93,6 +97,46 @@ class ColPaliEmbedder:
         with self._torch.no_grad():
             embeddings = self._model(**batch)  # (batch, n_patches, dim)
         return [emb.float().cpu().tolist() for emb in embeddings]
+
+
+@runtime_checkable
+class QueryEmbedder(Protocol):
+    """Anything that can turn text queries into token-vector lists."""
+
+    def embed_queries(self, queries: list[str]) -> list[list[list[float]]]:
+        """Return token vectors for each query string.
+
+        Shape per query: ``(n_tokens, dim)``.  ``n_tokens`` may vary across
+        queries depending on the model's tokenizer.
+        """
+        ...
+
+
+class StubQueryEmbedder:
+    """Deterministic random-vector query embedder — no model required.
+
+    Produces the same vectors for the same query string regardless of run
+    (uses MD5 of the query text to seed the RNG, avoiding Python's
+    randomised ``hash()``).
+    """
+
+    def __init__(
+        self,
+        n_tokens: int = 8,
+        dim: int = COLPALI_DIM,
+        seed: int = 0,
+    ) -> None:
+        self._n_tokens = n_tokens
+        self._dim = dim
+        self._seed = seed
+
+    def embed_queries(self, queries: list[str]) -> list[list[list[float]]]:
+        results = []
+        for query in queries:
+            digest = int(hashlib.md5(query.encode()).hexdigest(), 16)
+            rng = np.random.default_rng((digest + self._seed) % (2**32))
+            results.append(rng.standard_normal((self._n_tokens, self._dim)).tolist())
+        return results
 
 
 class ColQwenEmbedder:
