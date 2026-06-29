@@ -1,0 +1,1 @@
+"""Ingest: PDF → page images."""

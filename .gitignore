@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+*.egg
+
+# Test/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Project artifacts
+data/
+images/
+*.pdf
+!tests/fixtures/*.pdf
+
+# Agent scratchpad
+.claude/
+CLAUDE.md
