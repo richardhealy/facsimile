@@ -4,7 +4,11 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
-### Added — 2026-06-29
+### Added — 2026-06-29 (M2 Retrieval)
+- `facsimile/retrieve/retriever.py`: `TextQueryEmbedder` protocol, `StubTextEmbedder` (deterministic, no model), `ColPaliTextEmbedder` (optional `[embed]` extra), and `Retriever` class that embeds a text query and queries the Qdrant MaxSim index, returning ranked `RetrievalResult` objects with doc_id, page_num, doc_path, and score.
+- 14 new tests in `tests/test_retriever.py` covering shape, determinism, protocol conformance, top-k, score ordering, relevant-page ranking, and custom collection; 59 total tests passing.
+
+### Added — 2026-06-29 (M0 + M1)
 - M1 visual embedding: `Embedder` protocol; `StubEmbedder` (deterministic, no model required); `ColPaliEmbedder` and `ColQwenEmbedder` wrappers (optional `pip install facsimile[embed]`).
 - `facsimile/ingest/pipeline.py`: `ingest_pdf` and `ingest_and_store` — single-call PDF → embeddings → Qdrant pipeline.
 - 17 new tests covering embedding shape, determinism, and end-to-end ingest round-trips; 35 total.
