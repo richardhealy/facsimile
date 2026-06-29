@@ -8,7 +8,7 @@ The public surface is the ``Embedder`` protocol. Two implementations ship:
   Requires ``pip install facsimile[embed]``.
 
 Both return the same shape: ``list[list[list[float]]]`` — one inner list per
-image, each containing *n_patches* vectors of length *dim* (128 for ColPali).
+image/text, each containing *n_patches* vectors of length *dim* (128 for ColPali).
 """
 
 from __future__ import annotations
@@ -23,13 +23,21 @@ COLPALI_DIM = 128
 
 @runtime_checkable
 class Embedder(Protocol):
-    """Anything that can turn page images into patch-vector lists."""
+    """Anything that can turn page images and text queries into patch-vector lists."""
 
     def embed_images(self, images: list[Image.Image]) -> list[list[list[float]]]:
         """Return patch vectors for each image.
 
         Shape per image: ``(n_patches, dim)``.  ``n_patches`` may vary
         between images (depends on image size and the model's patch stride).
+        """
+        ...
+
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        """Return query token vectors for each text string.
+
+        Shape per text: ``(n_tokens, dim)``.  Used at retrieval time to encode
+        the user question into the same vector space as the page embeddings.
         """
         ...
 
@@ -55,6 +63,16 @@ class StubEmbedder:
         return [
             self._rng.standard_normal((self._n_patches, self._dim)).tolist()
             for _ in images
+        ]
+
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        # Use text length as a seed perturbation so different queries differ,
+        # but keep output deterministic for test reproducibility.
+        return [
+            np.random.default_rng(self._rng.integers(0, 2**32))
+            .standard_normal((self._n_patches, self._dim))
+            .tolist()
+            for _ in texts
         ]
 
 
@@ -94,6 +112,12 @@ class ColPaliEmbedder:
             embeddings = self._model(**batch)  # (batch, n_patches, dim)
         return [emb.float().cpu().tolist() for emb in embeddings]
 
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        batch = self._processor.process_queries(texts).to(self._device)
+        with self._torch.no_grad():
+            embeddings = self._model(**batch)
+        return [emb.float().cpu().tolist() for emb in embeddings]
+
 
 class ColQwenEmbedder:
     """ColQwen2 embedder backed by ``colpali-engine``.
@@ -126,6 +150,12 @@ class ColQwenEmbedder:
 
     def embed_images(self, images: list[Image.Image]) -> list[list[list[float]]]:
         batch = self._processor.process_images(images).to(self._device)
+        with self._torch.no_grad():
+            embeddings = self._model(**batch)
+        return [emb.float().cpu().tolist() for emb in embeddings]
+
+    def embed_queries(self, texts: list[str]) -> list[list[list[float]]]:
+        batch = self._processor.process_queries(texts).to(self._device)
         with self._torch.no_grad():
             embeddings = self._model(**batch)
         return [emb.float().cpu().tolist() for emb in embeddings]
