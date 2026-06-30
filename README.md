@@ -12,7 +12,7 @@ Visual document RAG using late-interaction page-image embeddings.
 
 ## Status
 
-M0–M4 complete: Scaffold, Visual embedding, Retrieval, Vision synthesis, and Benchmark. See [PROGRESS.md](PROGRESS.md) for the roadmap.
+M0–M5 complete: Scaffold, Visual embedding, Retrieval, Vision synthesis, Benchmark, and Ship (FastAPI + viewer). See [PROGRESS.md](PROGRESS.md) for the full roadmap.
 
 ## Benchmark
 
@@ -46,10 +46,41 @@ print(f"Text answer accuracy:   {summary.text_answer_accuracy:.0%}")
 
 A ready-to-use question template is at [`bench/sample_questions.json`](bench/sample_questions.json).
 
+## API
+
+Start the server:
+
+```bash
+uvicorn facsimile.api.main:app --reload
+```
+
+Open `http://localhost:8000` for the page-highlight viewer, or call the API directly:
+
+```bash
+# Ingest a PDF
+curl -F file=@annual_report.pdf http://localhost:8000/ingest
+# → {"doc_id": "abc123...", "page_count": 42}
+
+# Retrieve top-3 pages
+curl -s -X POST http://localhost:8000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"question": "What was total revenue?", "top_k": 3}' | python -m json.tool
+
+# Retrieve + synthesize (needs ANTHROPIC_API_KEY)
+curl -s -X POST http://localhost:8000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"question": "What was total revenue?", "top_k": 3, "synthesize": true}' | python -m json.tool
+
+# Fetch a page image
+curl http://localhost:8000/pages/<doc_id>/1 -o page1.png
+```
+
+Full OpenAPI docs are at `http://localhost:8000/docs`.
+
 ## Requirements
 
 - Python ≥ 3.11
-- [Qdrant](https://qdrant.tech/) (Docker: `docker run -p 6333:6333 qdrant/qdrant`)
+- Qdrant runs in-memory by default (no server needed for the demo); use `docker run -p 6333:6333 qdrant/qdrant` for a persistent deployment
 
 ## Install
 

@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M5)
+- M5 ship: `facsimile/api/main.py` — `POST /ingest` (upload PDF → rasterize → embed → store), `POST /query` (retrieve top-k pages; optional vision-LLM synthesis), `GET /pages/{doc_id}/{page_num}` (serve rasterized PNG), `GET /` (viewer UI); FastAPI lifespan initialises in-memory Qdrant + StubEmbedder + temp image store.
+- `facsimile/viewer/app.py` — `viewer_html()` returns a single-page HTML/JS viewer: PDF upload, question input, retrieved page grid with MaxSim score bars, cited-page highlighting, and optional synthesis toggle.
+- `python-multipart>=0.0.9` added to core dependencies (required for FastAPI file upload).
+- 28 new tests covering ingest, query, page serving, and viewer; 153 total.
+
 ### Added — 2026-06-30 (M4)
 - M4 benchmark: `facsimile/bench/questions.py` — `BenchQuestion` dataclass and `load_questions()` JSON loader.
 - `facsimile/bench/text_pipeline.py` — keyword-overlap text pipeline (`_tokenize`, `_score`, `extract_page_texts`, `text_retrieve`) as the comparison baseline for visual retrieval.

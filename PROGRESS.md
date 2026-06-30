@@ -7,7 +7,7 @@
 - [x] **M2 — Retrieval**: `embed_queries` on Embedder protocol; `Retriever` class (query → embed → Qdrant MaxSim → `RetrievedPage` list); 14 new tests, 59 total.
 - [x] **M3 — Vision synthesis**: `synthesize()` feeds retrieved page images to a Claude vision model; returns `Answer` with grounded text and `[Page N]`-cited page numbers; 21 new tests, 80 total.
 - [x] **M4 — Benchmark**: `BenchQuestion` schema + `load_questions`; `text_retrieve` (keyword-overlap text pipeline as baseline); `run_benchmark` (visual vs text, per-question results); `summarize_results` (accuracy by pipeline and question type); `bench/sample_questions.json`; 45 new tests, 125 total.
-- [ ] **M5 — Ship**: FastAPI endpoints, page-highlight viewer, README benchmark, release.
+- [x] **M5 — Ship**: FastAPI `/ingest`, `/query`, `/pages/{doc_id}/{page_num}` endpoints; single-page viewer at `GET /` with page-highlight UI; `python-multipart` dependency; 28 new tests, 153 total.
 
 ## Documentation
 
