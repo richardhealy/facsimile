@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M3)
+- M3 vision synthesis: `synthesize()` in `facsimile/answer/synthesizer.py` — encodes retrieved page images as base64, sends them with the question to Claude's vision API, and extracts "Page N" citations from the response.
+- `Answer` dataclass with `text`, `cited_pages`, and `model` fields.
+- `_encode_image` and `_extract_cited_pages` helpers in `synthesizer.py`.
+- `facsimile[answer]` optional dependency extra for `anthropic>=0.30`.
+- `facsimile/answer/__init__.py` now exports `Answer` and `synthesize`.
+- 26 new tests covering the dataclass, helpers, mocked API calls, content structure, and citation extraction; 85 total.
+
 ### Added — 2026-06-29 (M2)
 - M2 retrieval: `embed_queries` method added to `Embedder` protocol, `StubEmbedder`, `ColPaliEmbedder`, and `ColQwenEmbedder`.
 - `facsimile/retrieve/retriever.py`: `Retriever` class and `RetrievedPage` dataclass — query text → Qdrant MaxSim → scored page list.
