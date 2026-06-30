@@ -92,36 +92,63 @@ app = FastAPI(
 
 
 class IngestResponse(BaseModel):
+    """Response from ``POST /ingest``."""
+
     doc_id: str
+    """Stable identifier derived from the uploaded filename stem."""
     pages: int
+    """Number of pages that were rasterized, embedded, and indexed."""
 
 
 class PageInfo(BaseModel):
+    """Metadata for one retrieved or ingested page."""
+
     doc_id: str
+    """Stable identifier for the source document."""
     page_num: int
+    """1-based page number within the document."""
     doc_path: str
+    """Original file path stored at ingest time."""
     score: float
+    """MaxSim late-interaction relevance score."""
 
 
 class RetrieveRequest(BaseModel):
+    """Request body for ``POST /retrieve``."""
+
     query: str
+    """Natural-language query to embed and search against the index."""
     top_k: int = 5
+    """Maximum number of pages to return (default 5)."""
 
 
 class RetrieveResponse(BaseModel):
+    """Response from ``POST /retrieve``."""
+
     pages: list[PageInfo]
+    """Retrieved pages sorted by descending MaxSim score."""
 
 
 class AskRequest(BaseModel):
+    """Request body for ``POST /ask``."""
+
     query: str
+    """Question to answer using retrieved page images."""
     top_k: int = 3
+    """Number of pages to retrieve and pass to the vision model (default 3)."""
 
 
 class AskResponse(BaseModel):
+    """Response from ``POST /ask``."""
+
     answer: str
+    """Vision-LLM answer text, including ``[Page N]`` citation markers."""
     cited_pages: list[int]
+    """Sorted list of page numbers cited in *answer*."""
     model: str
+    """Claude model ID used for synthesis."""
     retrieved_pages: list[PageInfo]
+    """Pages passed to the vision model, for display in the viewer."""
 
 
 # ---------------------------------------------------------------------------

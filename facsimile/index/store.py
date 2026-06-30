@@ -36,6 +36,16 @@ VECTOR_DIM = 128
 
 @dataclass
 class PageRecord:
+    """One indexed page: its identity, source path, and patch-vector matrix.
+
+    Attributes:
+        doc_id: Stable identifier for the source document (typically the file stem).
+        page_num: 1-based page number within the document.
+        doc_path: Original file path, stored in the Qdrant payload for display.
+        vectors: Patch-embedding matrix of shape ``(n_patches, VECTOR_DIM)``.
+            Each row is one ColPali/ColQwen patch vector.
+    """
+
     doc_id: str
     page_num: int
     doc_path: str

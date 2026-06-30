@@ -33,7 +33,14 @@ _STOPWORDS = frozenset(
 
 @dataclass
 class TextPage:
-    """One page returned by :func:`text_retrieve`."""
+    """One page returned by :func:`text_retrieve`.
+
+    Attributes:
+        page_num: 1-based page number within the document.
+        text: Raw text content extracted from the PDF page.
+        score: Keyword-overlap score in ``[0, 1]``: fraction of distinct
+            query terms found in *text*.
+    """
 
     page_num: int
     text: str

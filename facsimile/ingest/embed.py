@@ -55,6 +55,12 @@ class StubEmbedder:
         dim: int = COLPALI_DIM,
         seed: int = 0,
     ) -> None:
+        """
+        Args:
+            n_patches: Number of patch vectors to generate per image or query.
+            dim: Vector dimensionality (default 128, matching ColPali output).
+            seed: RNG seed for reproducibility across test runs.
+        """
         self._n_patches = n_patches
         self._dim = dim
         self._rng = np.random.default_rng(seed)

@@ -40,7 +40,22 @@ from facsimile.retrieve.retriever import Retriever
 
 @dataclass
 class BenchResult:
-    """Per-question result from :func:`run_benchmark`."""
+    """Per-question result from :func:`run_benchmark`.
+
+    Attributes:
+        question: The original question text.
+        expected_answer: Expected-answer substring used for correctness checks.
+        correct_page: The ground-truth page number.
+        question_type: Category tag (``"table"`` / ``"chart"`` / ``"text"``).
+        visual_answer: Synthesized answer text from the vision-LLM pipeline.
+        visual_cited_pages: Page numbers cited by the vision model.
+        visual_correct: ``True`` when *expected_answer* appears in *visual_answer*.
+        visual_page_hit: ``True`` when *correct_page* is in *visual_cited_pages*.
+        text_answer: Concatenated text from the top-k pages of the text pipeline.
+        text_retrieved_pages: Page numbers returned by the text pipeline.
+        text_correct: ``True`` when *expected_answer* appears in *text_answer*.
+        text_page_hit: ``True`` when *correct_page* is in *text_retrieved_pages*.
+    """
 
     question: str
     expected_answer: str
@@ -62,7 +77,22 @@ class BenchResult:
 
 @dataclass
 class BenchSummary:
-    """Aggregate accuracy metrics from :func:`summarize_results`."""
+    """Aggregate accuracy metrics from :func:`summarize_results`.
+
+    Attributes:
+        n: Total number of questions evaluated.
+        visual_answer_accuracy: Fraction of questions where the visual pipeline
+            produced a correct answer.
+        text_answer_accuracy: Fraction of questions where the text pipeline
+            produced a correct answer.
+        visual_page_accuracy: Fraction of questions where the visual pipeline
+            cited the correct page.
+        text_page_accuracy: Fraction of questions where the text pipeline
+            retrieved the correct page.
+        by_type: Per question-type breakdown; keys are question-type strings
+            (``"table"``, ``"chart"``, ``"text"``), values are dicts with the
+            same four accuracy keys plus ``"n"``.
+    """
 
     n: int
     visual_answer_accuracy: float

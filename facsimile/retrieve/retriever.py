@@ -21,7 +21,15 @@ from facsimile.ingest.embed import Embedder
 
 @dataclass
 class RetrievedPage:
-    """One search result returned by :class:`Retriever`."""
+    """One search result returned by :class:`Retriever`.
+
+    Attributes:
+        doc_id: Stable identifier for the source document.
+        page_num: 1-based page number within the document.
+        doc_path: Original file path (for display or re-loading the page image).
+        score: MaxSim late-interaction score (higher = more relevant).
+            Not normalized — compare only within the same result set.
+    """
 
     doc_id: str
     page_num: int

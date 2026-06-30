@@ -17,7 +17,17 @@ from pathlib import Path
 
 @dataclass
 class BenchQuestion:
-    """One benchmark evaluation item."""
+    """One benchmark evaluation item.
+
+    Attributes:
+        question: Natural-language question whose answer lives in the document.
+        expected_answer: Substring that must appear in a correct answer
+            (case-insensitive match).
+        correct_page: 1-based page number where the answer can be found.
+        question_type: Category tag — ``"table"``, ``"chart"``, or ``"text"``.
+            Used to break down accuracy by question type in
+            :func:`~facsimile.bench.runner.summarize_results`.
+    """
 
     question: str
     expected_answer: str
