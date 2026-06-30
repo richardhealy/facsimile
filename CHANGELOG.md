@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M4)
+- M4 benchmark: `facsimile/bench/questions.py` — `BenchQuestion` dataclass and `load_questions()` JSON loader.
+- `facsimile/bench/text_pipeline.py` — keyword-overlap text pipeline (`_tokenize`, `_score`, `extract_page_texts`, `text_retrieve`) as the comparison baseline for visual retrieval.
+- `facsimile/bench/runner.py` — `run_benchmark()` evaluates each question through the visual and text pipelines and returns `BenchResult` per question; `summarize_results()` aggregates into `BenchSummary` with overall and per-type accuracy metrics.
+- `facsimile/bench/__init__.py` updated to export the full public surface.
+- `bench/sample_questions.json` — sample annual-report question set (5 table/chart questions).
+- 45 new tests covering all benchmark modules; 125 total.
+
 ### Added — 2026-06-30 (M3)
 - M3 vision synthesis: `facsimile/answer/synthesizer.py` — `synthesize()` encodes retrieved page images as base64 PNG, sends them with a grounded-answer system prompt to a Claude vision model, extracts `[Page N]` citations from the response, and returns an `Answer(text, cited_pages, model)` dataclass.
 - `facsimile/answer/__init__.py` now exports `Answer` and `synthesize`.

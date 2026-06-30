@@ -6,7 +6,7 @@
 - [x] **M1 — Visual embedding**: `Embedder` protocol, `StubEmbedder` (tests/CI), `ColPaliEmbedder` + `ColQwenEmbedder` (optional `embed` extra); `ingest_pdf` / `ingest_and_store` pipeline; 35 tests passing.
 - [x] **M2 — Retrieval**: `embed_queries` on Embedder protocol; `Retriever` class (query → embed → Qdrant MaxSim → `RetrievedPage` list); 14 new tests, 59 total.
 - [x] **M3 — Vision synthesis**: `synthesize()` feeds retrieved page images to a Claude vision model; returns `Answer` with grounded text and `[Page N]`-cited page numbers; 21 new tests, 80 total.
-- [ ] **M4 — Benchmark**: table/chart question set, visual-vs-text comparison numbers.
+- [x] **M4 — Benchmark**: `BenchQuestion` schema + `load_questions`; `text_retrieve` (keyword-overlap text pipeline as baseline); `run_benchmark` (visual vs text, per-question results); `summarize_results` (accuracy by pipeline and question type); `bench/sample_questions.json`; 45 new tests, 125 total.
 - [ ] **M5 — Ship**: FastAPI endpoints, page-highlight viewer, README benchmark, release.
 
 ## Documentation

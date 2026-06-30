@@ -1,0 +1,32 @@
+[
+  {
+    "question": "What was the total revenue for the fiscal year?",
+    "expected_answer": "revenue",
+    "correct_page": 4,
+    "question_type": "table"
+  },
+  {
+    "question": "What is the year-over-year revenue growth percentage shown in the chart?",
+    "expected_answer": "growth",
+    "correct_page": 5,
+    "question_type": "chart"
+  },
+  {
+    "question": "What are the operating expenses broken down by category in the income statement?",
+    "expected_answer": "operating",
+    "correct_page": 6,
+    "question_type": "table"
+  },
+  {
+    "question": "What is the net income margin shown in the financial summary table?",
+    "expected_answer": "margin",
+    "correct_page": 7,
+    "question_type": "table"
+  },
+  {
+    "question": "Which product segment contributed the most to total revenue according to the pie chart?",
+    "expected_answer": "segment",
+    "correct_page": 8,
+    "question_type": "chart"
+  }
+]
