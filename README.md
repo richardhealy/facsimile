@@ -12,7 +12,7 @@ Visual document RAG using late-interaction page-image embeddings.
 
 ## Status
 
-M0 (Scaffold), M1 (Visual embedding), and M2 (Retrieval) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
+M0 (Scaffold), M1 (Visual embedding), M2 (Retrieval), and M3 (Vision synthesis) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
 
 ## Requirements
 
