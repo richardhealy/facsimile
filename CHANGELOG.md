@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (architecture)
+- Architecture dossier at `docs/architecture.md`: component map, ingest and query data-flow Mermaid diagrams, key design decisions and trade-offs (late-interaction MaxSim, Embedder protocol, vision-LLM synthesis, idempotent point IDs), external dependency table, milestone-to-code mapping, and deployment topology.
+
 ### Added — 2026-06-30 (api-reference)
 - API reference documentation: `docs/api.md` — full endpoint reference covering auth, env vars, request/response shapes, path parameters, error cases, and a typical workflow.
 - `docs/openapi.json` — machine-readable OpenAPI 3.1 spec generated from the live FastAPI app; importable into Postman, Insomnia, or any OpenAPI-compatible tooling.
