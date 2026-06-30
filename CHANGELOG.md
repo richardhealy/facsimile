@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M5)
+- M5 ship: `POST /ingest` — upload PDF, rasterize pages to `DATA_DIR`, embed and index via Qdrant.
+- `POST /retrieve` — query the visual index; return scored `PageInfo` objects.
+- `POST /ask` — retrieve top pages, load their rasterized PNGs, pass to `synthesize()`, return `AskResponse` with answer text, cited pages, and retrieved page metadata.
+- `GET /pages/{doc_id}/{page_num}` — serve a rasterized page image as PNG.
+- `GET /viewer` — interactive page-highlight viewer: dark-mode HTML SPA that calls `/ask`, renders retrieved page images, and highlights cited pages with a gold border.
+- `facsimile/viewer/app.py` — `viewer_html()` function returning the full single-page application template.
+- `python-multipart>=0.0.12` added to core dependencies (required for FastAPI file upload).
+- 27 new tests covering all new endpoints; 152 total.
+
 ### Added — 2026-06-30 (M4)
 - M4 benchmark: `facsimile/bench/questions.py` — `BenchQuestion` dataclass and `load_questions()` JSON loader.
 - `facsimile/bench/text_pipeline.py` — keyword-overlap text pipeline (`_tokenize`, `_score`, `extract_page_texts`, `text_retrieve`) as the comparison baseline for visual retrieval.
