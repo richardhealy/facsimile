@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M3)
+- M3 vision synthesis: `Synthesizer` protocol; `StubSynthesizer` (deterministic, no API call); `ClaudeSynthesizer` wrapping the Anthropic API (optional `facsimile[answer]` extra).
+- `_extract_cited_pages` helper that pulls cited page numbers from LLM response text.
+- `facsimile[answer]` optional extra (`anthropic>=0.30`).
+- 26 new tests covering `Answer` dataclass, protocol compliance, `StubSynthesizer`, and page-citation extraction; 85 total.
+
 ### Added — 2026-06-29 (M2)
 - M2 retrieval: `embed_queries` method added to `Embedder` protocol, `StubEmbedder`, `ColPaliEmbedder`, and `ColQwenEmbedder`.
 - `facsimile/retrieve/retriever.py`: `Retriever` class and `RetrievedPage` dataclass — query text → Qdrant MaxSim → scored page list.

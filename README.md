@@ -12,7 +12,7 @@ Visual document RAG using late-interaction page-image embeddings.
 
 ## Status
 
-M0 (Scaffold), M1 (Visual embedding), and M2 (Retrieval) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
+M0 (Scaffold), M1 (Visual embedding), M2 (Retrieval), and M3 (Vision synthesis) complete. See [PROGRESS.md](PROGRESS.md) for the roadmap.
 
 ## Requirements
 
@@ -27,6 +27,9 @@ pip install -e ".[dev]"
 
 # With real ColPali/ColQwen inference (requires GPU for practical speed)
 pip install -e ".[embed]"
+
+# With Claude vision synthesis (requires ANTHROPIC_API_KEY)
+pip install -e ".[answer]"
 ```
 
 ## Run tests
