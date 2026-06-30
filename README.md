@@ -12,11 +12,50 @@ Visual document RAG using late-interaction page-image embeddings.
 
 ## Status
 
-M0–M4 complete: Scaffold, Visual embedding, Retrieval, Vision synthesis, and Benchmark. See [PROGRESS.md](PROGRESS.md) for the roadmap.
+M0–M5 complete: all milestones implemented, 156 tests passing. See [PROGRESS.md](PROGRESS.md) for the full roadmap.
+
+## Quickstart
+
+```bash
+# Install
+pip install -e ".[dev]"
+
+# Start the API + viewer
+python -c "from facsimile.viewer.app import launch_viewer; launch_viewer(port=8000)"
+
+# Ingest a PDF
+curl -F "file=@annual_report.pdf" http://localhost:8000/ingest
+
+# Query (retrieve top pages)
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What was total revenue?", "top_k": 5}'
+
+# Answer (retrieval + vision synthesis, requires ANTHROPIC_API_KEY)
+curl -X POST http://localhost:8000/answer \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What was total revenue?", "top_k": 3}'
+
+# Browser viewer with page-highlight
+open http://localhost:8000/viewer
+```
+
+## API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Liveness check |
+| `POST /ingest` | Upload a PDF — rasterize, embed, index |
+| `POST /query` | Retrieve top-k pages by late-interaction MaxSim |
+| `POST /answer` | Retrieve + vision-LLM synthesis with page citations |
+| `GET /pages/{doc_id}/{page_num}` | Serve a rasterized page as PNG |
+| `GET /viewer` | Browser UI with page-highlight |
+
+Interactive docs: `http://localhost:8000/docs`
 
 ## Benchmark
 
-`facsimile` includes a built-in benchmark that compares the visual pipeline against a text-extraction baseline on table/chart questions.
+`facsimile` includes a built-in benchmark comparing the visual pipeline against a text-extraction baseline on table/chart questions.
 
 | Metric | Visual pipeline | Text pipeline |
 |--------|----------------|---------------|
@@ -49,7 +88,7 @@ A ready-to-use question template is at [`bench/sample_questions.json`](bench/sam
 ## Requirements
 
 - Python ≥ 3.11
-- [Qdrant](https://qdrant.tech/) (Docker: `docker run -p 6333:6333 qdrant/qdrant`)
+- [Qdrant](https://qdrant.tech/) (Docker: `docker run -p 6333:6333 qdrant/qdrant`), or the built-in in-memory client for demos/tests
 
 ## Install
 
@@ -71,11 +110,13 @@ pytest
 
 ```
 facsimile/
-  ingest/    # PDF → page images (rasterize.py)
-  index/     # Qdrant multivector store (store.py)
-  retrieve/  # late-interaction MaxSim scoring
-  answer/    # vision-LLM synthesis + citations
-  bench/     # table/chart benchmark vs text pipeline
-  api/       # FastAPI application
-  viewer/    # page-highlight viewer
+  ingest/    # PDF → page images (rasterize.py) + embeddings (embed.py, pipeline.py)
+  index/     # Qdrant multivector store with MaxSim (store.py)
+  retrieve/  # Late-interaction MaxSim retrieval (retriever.py, scorer.py)
+  answer/    # Vision-LLM synthesis + citations (synthesizer.py)
+  bench/     # Table/chart benchmark vs text pipeline
+  api/       # FastAPI application (main.py) — all REST endpoints
+  viewer/    # launch_viewer() helper for the browser UI
 ```
+
+The page image is the atomic unit end to end — nothing about a table or chart is lost between ingestion and synthesis.

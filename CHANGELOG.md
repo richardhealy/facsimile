@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M5)
+- M5 ship: `facsimile/api/main.py` — full FastAPI application with `POST /ingest` (PDF upload → rasterize → embed → index), `POST /query` (late-interaction page retrieval), `POST /answer` (vision-LLM synthesis with page citations), `GET /pages/{doc_id}/{page_num}` (serve rasterized PNG), and `GET /viewer` (browser UI with best-match page highlight).
+- Dependency injection via `get_qdrant_client`, `get_embedder`, `get_retriever`, `get_pdf_store` — all overridable in tests.
+- `facsimile/viewer/app.py` — `launch_viewer()` starts the full server with uvicorn.
+- `python-multipart>=0.0.9` added to core dependencies (required for file upload).
+- 31 new tests covering all endpoints (ingest, query, answer, pages, viewer, XSS escaping); 156 total.
+
 ### Added — 2026-06-30 (M4)
 - M4 benchmark: `facsimile/bench/questions.py` — `BenchQuestion` dataclass and `load_questions()` JSON loader.
 - `facsimile/bench/text_pipeline.py` — keyword-overlap text pipeline (`_tokenize`, `_score`, `extract_page_texts`, `text_retrieve`) as the comparison baseline for visual retrieval.
