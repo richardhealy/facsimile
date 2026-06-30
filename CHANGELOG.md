@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (M3)
+- `Synthesizer` protocol: `synthesize(question, page_images) -> Answer` — mirrors `Embedder`.
+- `StubSynthesizer`: deterministic, cites every supplied page, no API calls — safe for tests and CI.
+- `ClaudeSynthesizer`: passes page images as base64 content blocks via the Anthropic SDK; extracts `[Page N]` citations from the response with regex; deduplicates and sorts cited page numbers.
+- `facsimile/answer/__init__.py` now exports the full public surface: `Answer`, `Synthesizer`, `StubSynthesizer`, `ClaudeSynthesizer`, `synthesize`.
+- `pyproject.toml`: new `answer` optional extra (`anthropic>=0.40`).
+- 22 new tests covering the `Answer` dataclass, `StubSynthesizer` behaviour, protocol compliance, and `ClaudeSynthesizer` with a mocked Anthropic client (JPEG/PNG media types, citation dedup, import guard); 81 total.
+
 ### Added — 2026-06-29 (M2)
 - M2 retrieval: `embed_queries` method added to `Embedder` protocol, `StubEmbedder`, `ColPaliEmbedder`, and `ColQwenEmbedder`.
 - `facsimile/retrieve/retriever.py`: `Retriever` class and `RetrievedPage` dataclass — query text → Qdrant MaxSim → scored page list.
