@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (api-reference)
+- API reference documentation: `docs/api.md` — full endpoint reference covering auth, env vars, request/response shapes, path parameters, error cases, and a typical workflow.
+- `docs/openapi.json` — machine-readable OpenAPI 3.1 spec generated from the live FastAPI app; importable into Postman, Insomnia, or any OpenAPI-compatible tooling.
+
 ### Added — 2026-06-30 (docs)
 - Inline documentation pass across the entire public surface: `Attributes:` sections on all dataclasses (`PageRecord`, `RetrievedPage`, `Answer`, `BenchResult`, `BenchSummary`); class docstrings and field docs on all Pydantic request/response models; `Args:` block for `StubEmbedder.__init__`; docstring on `_page_image_path` helper.
 - `facsimile/ingest/__init__.py` now exports and documents the full ingest public surface (`Embedder`, `StubEmbedder`, `ColPaliEmbedder`, `ColQwenEmbedder`, rasterize functions, pipeline functions).

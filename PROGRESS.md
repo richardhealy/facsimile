@@ -12,7 +12,7 @@
 ## Documentation
 
 - [x] Inline doc comments across the public surface.
-- [ ] API reference (OpenAPI spec + `docs/api.md`).
+- [x] API reference (OpenAPI spec + `docs/api.md`).
 - [ ] Architecture dossier (`docs/architecture.md`).
 - [ ] Integration guide (`docs/integration.md`).
 - [ ] Usage and how-to guides; `docs/` index; final README pass.
