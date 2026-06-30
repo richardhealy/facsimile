@@ -24,7 +24,13 @@ from PIL import Image
 
 @dataclass
 class Answer:
-    """A vision-grounded answer produced by :func:`synthesize`."""
+    """A vision-grounded answer produced by :func:`synthesize`.
+
+    Attributes:
+        text: Raw model response text, including ``[Page N]`` citation markers.
+        cited_pages: Sorted list of page numbers extracted from the response text.
+        model: Exact model ID string echoed from the API response.
+    """
 
     text: str
     cited_pages: list[int]

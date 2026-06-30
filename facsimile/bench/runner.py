@@ -40,7 +40,23 @@ from facsimile.retrieve.retriever import Retriever
 
 @dataclass
 class BenchResult:
-    """Per-question result from :func:`run_benchmark`."""
+    """Per-question result from :func:`run_benchmark`.
+
+    Attributes:
+        question: The benchmark question string.
+        expected_answer: Substring that must appear in a correct answer.
+        correct_page: 1-based page number where the ground-truth answer lives.
+        question_type: Category tag (``"table"`` / ``"chart"`` / ``"text"``).
+        visual_answer: Raw text produced by the vision pipeline synthesizer.
+        visual_cited_pages: Pages cited in the visual pipeline's answer.
+        visual_correct: True when *expected_answer* appears in *visual_answer*
+            (case-insensitive substring match).
+        visual_page_hit: True when *correct_page* is in *visual_cited_pages*.
+        text_answer: Concatenated page text from the text pipeline's top-k pages.
+        text_retrieved_pages: Page numbers returned by the text pipeline.
+        text_correct: True when *expected_answer* appears in *text_answer*.
+        text_page_hit: True when *correct_page* is in *text_retrieved_pages*.
+    """
 
     question: str
     expected_answer: str
@@ -62,7 +78,21 @@ class BenchResult:
 
 @dataclass
 class BenchSummary:
-    """Aggregate accuracy metrics from :func:`summarize_results`."""
+    """Aggregate accuracy metrics from :func:`summarize_results`.
+
+    Attributes:
+        n: Total number of questions evaluated.
+        visual_answer_accuracy: Fraction of questions answered correctly by the
+            visual pipeline (expected-answer substring present in synthesized text).
+        text_answer_accuracy: Fraction of questions answered correctly by the
+            text pipeline (expected-answer substring present in extracted text).
+        visual_page_accuracy: Fraction of questions where the visual pipeline
+            retrieved and cited the correct page.
+        text_page_accuracy: Fraction of questions where the text pipeline
+            retrieved the correct page.
+        by_type: Per-question-type breakdown with the same four accuracy keys,
+            keyed by ``question_type`` string (e.g. ``"table"`` / ``"chart"``).
+    """
 
     n: int
     visual_answer_accuracy: float

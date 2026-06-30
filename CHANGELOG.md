@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added — 2026-06-30 (docs)
+- Inline documentation pass across the entire public surface: `Attributes:` sections on all dataclasses (`PageRecord`, `RetrievedPage`, `Answer`, `BenchResult`, `BenchSummary`); class docstrings and field docs on all Pydantic request/response models; `Args:` block for `StubEmbedder.__init__`; docstring on `_page_image_path` helper.
+- `facsimile/ingest/__init__.py` now exports and documents the full ingest public surface (`Embedder`, `StubEmbedder`, `ColPaliEmbedder`, `ColQwenEmbedder`, rasterize functions, pipeline functions).
+- `facsimile/index/__init__.py` now exports and documents the full index public surface (`PageRecord`, `ensure_collection`, `upsert_pages`, `query_pages`, client helpers).
+- `facsimile/viewer/__init__.py` now exports `viewer_html`.
+- `facsimile/api/__init__.py` updated with usage example (import path and uvicorn invocation).
+
 ### Added — 2026-06-30 (M5)
 - M5 ship: `POST /ingest` — upload PDF, rasterize pages to `DATA_DIR`, embed and index via Qdrant.
 - `POST /retrieve` — query the visual index; return scored `PageInfo` objects.

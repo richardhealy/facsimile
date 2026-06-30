@@ -92,36 +92,60 @@ app = FastAPI(
 
 
 class IngestResponse(BaseModel):
+    """Response returned by ``POST /ingest``."""
+
     doc_id: str
+    """Stable document identifier derived from the uploaded filename stem."""
     pages: int
+    """Number of pages rasterized, embedded, and indexed."""
 
 
 class PageInfo(BaseModel):
+    """Metadata for one retrieved page, included in retrieve and ask responses."""
+
     doc_id: str
     page_num: int
     doc_path: str
     score: float
+    """MaxSim late-interaction relevance score (higher = more relevant)."""
 
 
 class RetrieveRequest(BaseModel):
+    """Request body for ``POST /retrieve``."""
+
     query: str
+    """Natural-language question or search string."""
     top_k: int = 5
+    """Maximum number of pages to return."""
 
 
 class RetrieveResponse(BaseModel):
+    """Response returned by ``POST /retrieve``."""
+
     pages: list[PageInfo]
+    """Retrieved pages sorted by descending relevance score."""
 
 
 class AskRequest(BaseModel):
+    """Request body for ``POST /ask``."""
+
     query: str
+    """Natural-language question to answer from the indexed documents."""
     top_k: int = 3
+    """Number of pages to retrieve and pass to the vision-LLM."""
 
 
 class AskResponse(BaseModel):
+    """Response returned by ``POST /ask``."""
+
     answer: str
+    """Vision-LLM response text with ``[Page N]`` citation markers."""
     cited_pages: list[int]
+    """Page numbers cited in the answer, in ascending order."""
     model: str
+    """Claude model ID used for synthesis."""
     retrieved_pages: list[PageInfo]
+    """Pages passed to the vision-LLM, for display in the viewer."""
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +154,7 @@ class AskResponse(BaseModel):
 
 
 def _page_image_path(data_dir: Path, doc_id: str, page_num: int) -> Path:
+    """Canonical filesystem path for a rasterized page PNG."""
     return data_dir / doc_id / f"page_{page_num:04d}.png"
 
 

@@ -36,6 +36,15 @@ VECTOR_DIM = 128
 
 @dataclass
 class PageRecord:
+    """One indexed page: its document coordinates plus its multi-patch vectors.
+
+    Attributes:
+        doc_id: Stable identifier for the source document (e.g. the filename stem).
+        page_num: 1-based page number within the document.
+        doc_path: Original file-system path to the PDF, stored for display.
+        vectors: Multi-patch embedding matrix, shape ``(n_patches, VECTOR_DIM)``.
+    """
+
     doc_id: str
     page_num: int
     doc_path: str
