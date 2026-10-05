@@ -5,6 +5,7 @@ Public surface:
 - :class:`PageRecord` — one indexed page (doc coordinates + patch vectors).
 - :func:`ensure_collection` — create the Qdrant collection if absent.
 - :func:`upsert_pages` — write page records into the collection (idempotent).
+- :func:`delete_other_pages`: drop a document's points other than its current pages.
 - :func:`query_pages` — MaxSim search; returns top-k :class:`~qdrant_client.models.ScoredPoint` objects.
 - :func:`get_client` — connect to a running Qdrant server.
 - :func:`get_memory_client` — ephemeral in-memory client for tests.
@@ -12,6 +13,7 @@ Public surface:
 
 from facsimile.index.store import (
     PageRecord,
+    delete_other_pages,
     ensure_collection,
     get_client,
     get_memory_client,
@@ -25,5 +27,6 @@ __all__ = [
     "get_client",
     "get_memory_client",
     "upsert_pages",
+    "delete_other_pages",
     "query_pages",
 ]
