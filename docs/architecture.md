@@ -63,8 +63,10 @@ flowchart LR
    vectors `(n_patches, 128)`. The real implementation uses ColPali or ColQwen2;
    `StubEmbedder` emits deterministic random vectors for tests.
 5. `upsert_pages()` stores each page as a Qdrant point whose `vector` field is
-   the full patch matrix. The point ID is a hash of `(doc_id, page_num)`, making
-   re-ingestion idempotent.
+   the full patch matrix. The point ID is a SHA-256 hash of `(doc_id, page_num)`,
+   so re-ingesting overwrites the same points. `delete_other_pages()` then
+   removes any other point stored for that `doc_id`, so a document that lost
+   pages does not keep them in the index.
 
 ### Query flow
 
@@ -149,10 +151,18 @@ naturally without forcing JSON formatting.
 
 ### Point ID stability
 
-Qdrant requires integer point IDs. `_page_id(doc_id, page_num)` folds the Python
-`hash()` of the tuple into an unsigned 64-bit integer. This makes IDs stable
-across runs (same input → same ID) so re-ingesting a document is idempotent — the
-existing point is overwritten, not duplicated.
+Qdrant point IDs are unsigned 64-bit integers or UUIDs. `_page_id(doc_id, page_num)`
+takes the first 8 bytes of a SHA-256 hash of `[doc_id, page_num]`, so the same page
+gets the same ID in every process and re-ingesting overwrites the existing point.
+
+Up to 6 October 2026 the ID came from Python's `hash()`. Python salts string
+hashes per process, so after a restart every re-ingest into a persistent Qdrant
+added a second copy of each page, and the top results filled up with duplicates.
+`ingest_and_store()` now upserts the new pages and then calls
+`delete_other_pages()`, which deletes every point for that `doc_id` that is not
+one of the new page IDs. That also clears duplicates left by the old scheme the
+first time a document is re-ingested. The test suite pins one ID value, because
+changing the scheme again would orphan every stored point.
 
 ### Application state
 
