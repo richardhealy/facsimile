@@ -1,5 +1,9 @@
 """Tests for facsimile.index.store (in-memory Qdrant)."""
 
+import os
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 
@@ -8,6 +12,7 @@ from facsimile.index.store import (
     VECTOR_DIM,
     PageRecord,
     _page_id,
+    delete_other_pages,
     ensure_collection,
     get_memory_client,
     query_pages,
@@ -118,6 +123,36 @@ def test_payload_stored_correctly():
     assert payload["doc_path"] == "/data/annual_report_2023.pdf"
 
 
+def _doc_pages(client, doc_id: str, page_nums) -> None:
+    upsert_pages(
+        client,
+        [PageRecord(doc_id, n, f"/tmp/{doc_id}.pdf", _random_vectors()) for n in page_nums],
+    )
+
+
+def _stored(client) -> list[tuple[str, int]]:
+    points, _ = client.scroll(collection_name=COLLECTION_NAME, limit=100, with_payload=True)
+    return sorted((p.payload["doc_id"], p.payload["page_num"]) for p in points)
+
+
+def test_delete_other_pages_keeps_listed_pages_only():
+    client = _make_client()
+    _doc_pages(client, "doc1", [1, 2, 3])
+    _doc_pages(client, "doc2", [1, 2, 3])
+    delete_other_pages(client, "doc1", [1, 2])
+    assert _stored(client) == [
+        ("doc1", 1), ("doc1", 2), ("doc2", 1), ("doc2", 2), ("doc2", 3),
+    ]
+
+
+def test_delete_other_pages_with_nothing_to_keep_removes_the_document():
+    client = _make_client()
+    _doc_pages(client, "doc1", [1, 2])
+    _doc_pages(client, "doc2", [1])
+    delete_other_pages(client, "doc1", [])
+    assert _stored(client) == [("doc2", 1)]
+
+
 # ---------------------------------------------------------------------------
 # Query
 # ---------------------------------------------------------------------------
@@ -180,3 +215,35 @@ def test_page_id_is_positive_int():
     pid = _page_id("doc1", 1)
     assert isinstance(pid, int)
     assert pid >= 0
+
+
+def test_page_id_fits_in_unsigned_64_bits():
+    for doc_id, page_num in [("doc1", 1), ("annual_report", 7), ("x" * 500, 9999)]:
+        assert 0 <= _page_id(doc_id, page_num) < 2**64
+
+
+def test_page_id_is_stable_across_processes():
+    """IDs must not depend on the per-process string hash salt.
+
+    Python salts ``hash()`` of strings per process, so an ID built on it
+    changes on every restart and re-ingesting into a persistent Qdrant adds
+    a second copy of each page instead of overwriting the first.
+    """
+    code = "from facsimile.index.store import _page_id; print(_page_id('annual_report', 7))"
+    ids = set()
+    for seed in ("1", "2", "random"):
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        out = subprocess.run(
+            [sys.executable, "-c", code],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        ids.add(int(out.stdout.strip()))
+    assert ids == {_page_id("annual_report", 7)}
+
+
+def test_page_id_scheme_is_pinned():
+    """Changing the ID scheme orphans every point already stored, so pin it."""
+    assert _page_id("annual_report", 7) == 0xF5F882AD78F53697

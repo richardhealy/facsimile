@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Fixed: 2026-10-06 (re-ingest)
+- Page point IDs are now the first 8 bytes of a SHA-256 hash of `[doc_id, page_num]` instead of Python's `hash()`. Python salts string hashes per process, so the old IDs changed on every restart and each re-ingest into a persistent Qdrant added a second copy of every page (three re-ingests of a 3-page PDF left 9 points, and the top 4 results were copies of page 1).
+- `ingest_and_store()` now deletes any other point stored for the document after upserting the new pages, using the new `delete_other_pages()` in `facsimile/index/store.py`. A document that gets shorter no longer keeps its removed pages, and duplicates left by the old ID scheme are cleared the first time a document is re-ingested.
+- `docs/architecture.md` no longer claims the `hash()`-based IDs were stable across runs.
+- 9 regression tests, including one that ingests the same PDF from two processes with different hash seeds into an on-disk Qdrant; 161 total.
+
 ### Added — 2026-06-30 (architecture)
 - Architecture dossier at `docs/architecture.md`: component map, ingest and query data-flow Mermaid diagrams, key design decisions and trade-offs (late-interaction MaxSim, Embedder protocol, vision-LLM synthesis, idempotent point IDs), external dependency table, milestone-to-code mapping, and deployment topology.
 

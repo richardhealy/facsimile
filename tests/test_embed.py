@@ -1,6 +1,9 @@
 """Tests for facsimile.ingest.embed and facsimile.ingest.pipeline."""
 
 import io
+import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -8,10 +11,12 @@ import numpy as np
 import pypdfium2 as pdfium
 import pytest
 from PIL import Image
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct
 
 from facsimile.ingest.embed import COLPALI_DIM, Embedder, StubEmbedder
 from facsimile.ingest.pipeline import ingest_and_store, ingest_pdf
-from facsimile.index.store import ensure_collection, get_memory_client
+from facsimile.index.store import COLLECTION_NAME, ensure_collection, get_memory_client
 
 
 # ---------------------------------------------------------------------------
@@ -181,3 +186,81 @@ class TestIngestAndStore:
             assert count == 2
         finally:
             path.unlink(missing_ok=True)
+
+    def test_re_ingest_shorter_document_drops_removed_pages(self):
+        long_path, short_path = _make_pdf_file(3), _make_pdf_file(2)
+        client = get_memory_client()
+        ensure_collection(client)
+        try:
+            ingest_and_store(long_path, StubEmbedder(), client, doc_id="report")
+            ingest_and_store(short_path, StubEmbedder(), client, doc_id="report")
+            assert _stored_pages(client) == [("report", 1), ("report", 2)]
+        finally:
+            long_path.unlink(missing_ok=True)
+            short_path.unlink(missing_ok=True)
+
+    def test_re_ingest_replaces_points_stored_under_other_ids(self):
+        """Points left by an older ID scheme are replaced, not kept alongside."""
+        path = _make_pdf_file(2)
+        client = get_memory_client()
+        ensure_collection(client)
+        try:
+            client.upsert(
+                collection_name=COLLECTION_NAME,
+                points=[
+                    PointStruct(
+                        id=123456789,
+                        vector=StubEmbedder().embed_images([_blank_image()])[0],
+                        payload={"doc_id": "report", "page_num": 1, "doc_path": "/old/report.pdf"},
+                    )
+                ],
+            )
+            ingest_and_store(path, StubEmbedder(), client, doc_id="report")
+            assert _stored_pages(client) == [("report", 1), ("report", 2)]
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_re_ingest_leaves_other_documents_alone(self):
+        path = _make_pdf_file(2)
+        client = get_memory_client()
+        ensure_collection(client)
+        try:
+            ingest_and_store(path, StubEmbedder(), client, doc_id="a")
+            ingest_and_store(path, StubEmbedder(), client, doc_id="b")
+            ingest_and_store(path, StubEmbedder(), client, doc_id="a")
+            assert _stored_pages(client) == [("a", 1), ("a", 2), ("b", 1), ("b", 2)]
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_re_ingest_in_new_process_does_not_duplicate_pages(self, tmp_path):
+        """Two separate processes ingest the same PDF into one on-disk Qdrant."""
+        pdf = tmp_path / "report.pdf"
+        pdf.write_bytes(_make_pdf_bytes(3))
+        db = tmp_path / "qdrant"
+        code = (
+            "import sys\n"
+            "from qdrant_client import QdrantClient\n"
+            "from facsimile.index.store import ensure_collection\n"
+            "from facsimile.ingest.embed import StubEmbedder\n"
+            "from facsimile.ingest.pipeline import ingest_and_store\n"
+            "client = QdrantClient(path=sys.argv[1])\n"
+            "ensure_collection(client)\n"
+            "ingest_and_store(sys.argv[2], StubEmbedder(), client)\n"
+            "client.close()\n"
+        )
+        for seed in ("1", "2"):
+            subprocess.run(
+                [sys.executable, "-c", code, str(db), str(pdf)],
+                env={**os.environ, "PYTHONHASHSEED": seed},
+                check=True,
+            )
+        client = QdrantClient(path=str(db))
+        try:
+            assert _stored_pages(client) == [("report", 1), ("report", 2), ("report", 3)]
+        finally:
+            client.close()
+
+
+def _stored_pages(client) -> list[tuple[str, int]]:
+    points, _ = client.scroll(collection_name=COLLECTION_NAME, limit=100, with_payload=True)
+    return sorted((p.payload["doc_id"], p.payload["page_num"]) for p in points)

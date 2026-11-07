@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from facsimile.index.store import PageRecord, upsert_pages
+from facsimile.index.store import PageRecord, delete_other_pages, upsert_pages
 from facsimile.ingest.embed import Embedder
 from facsimile.ingest.rasterize import rasterize_pdf
 
@@ -53,9 +53,20 @@ def ingest_and_store(
 ) -> list[PageRecord]:
     """Ingest a PDF and store the resulting records in Qdrant.
 
+    Re-ingesting a ``doc_id`` replaces it: the new pages are upserted first,
+    then any other point stored for that ``doc_id`` (pages the new version
+    lacks, or points from an older ID scheme) is deleted.
+
     Returns the list of :class:`~facsimile.index.store.PageRecord` objects so
     callers can inspect cost / patch counts without a second round-trip.
     """
-    records = ingest_pdf(pdf_path, embedder, doc_id=doc_id, dpi=dpi)
+    resolved_doc_id = doc_id or Path(pdf_path).stem
+    records = ingest_pdf(pdf_path, embedder, doc_id=resolved_doc_id, dpi=dpi)
     upsert_pages(client, records, collection_name=collection_name)
+    delete_other_pages(
+        client,
+        resolved_doc_id,
+        [r.page_num for r in records],
+        collection_name=collection_name,
+    )
     return records

@@ -15,6 +15,8 @@ Payload schema per point:
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -22,6 +24,11 @@ import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
+    FieldCondition,
+    Filter,
+    FilterSelector,
+    HasIdCondition,
+    MatchValue,
     MultiVectorComparator,
     MultiVectorConfig,
     PointStruct,
@@ -90,7 +97,8 @@ def upsert_pages(
     """Upsert page records into the collection.
 
     The point ID is derived deterministically from (doc_id, page_num) so that
-    re-ingesting a document is idempotent.
+    upserting the same page again, in this process or a later one, overwrites
+    the existing point.
     """
     points = [
         PointStruct(
@@ -105,6 +113,33 @@ def upsert_pages(
         for r in records
     ]
     client.upsert(collection_name=collection_name, points=points)
+
+
+def delete_other_pages(
+    client: QdrantClient,
+    doc_id: str,
+    keep_page_nums: Sequence[int],
+    collection_name: str = COLLECTION_NAME,
+) -> None:
+    """Delete every point stored for *doc_id* except the pages in *keep_page_nums*.
+
+    Called after re-ingesting a document, this removes pages the new version
+    no longer has and any points written under an earlier ID scheme, so the
+    index holds exactly one point per current page.
+    """
+    must_not = []
+    if keep_page_nums:
+        keep_ids = [_page_id(doc_id, n) for n in keep_page_nums]
+        must_not.append(HasIdCondition(has_id=keep_ids))
+    client.delete(
+        collection_name=collection_name,
+        points_selector=FilterSelector(
+            filter=Filter(
+                must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))],
+                must_not=must_not,
+            )
+        ),
+    )
 
 
 def query_pages(
@@ -122,7 +157,10 @@ def query_pages(
 
 
 def _page_id(doc_id: str, page_num: int) -> int:
-    """Stable integer point ID from (doc_id, page_num) via a hash fold."""
-    raw = hash((doc_id, page_num)) & 0xFFFF_FFFF_FFFF_FFFF
-    # Qdrant unsigned 64-bit IDs; Python hash can be negative on 64-bit builds.
-    return raw
+    """Stable unsigned 64-bit point ID for (doc_id, page_num).
+
+    Built from SHA-256 rather than ``hash()``: Python salts string hashes per
+    process, so a ``hash()``-based ID changes on every restart.
+    """
+    key = json.dumps([doc_id, page_num]).encode()
+    return int.from_bytes(hashlib.sha256(key).digest()[:8], "big")
