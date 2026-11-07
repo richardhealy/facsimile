@@ -1,14 +1,18 @@
 """Late-interaction visual embedding: page images → per-patch vectors.
 
-The public surface is the ``Embedder`` protocol. Two implementations ship:
+The public surface is the ``Embedder`` protocol. Three implementations ship:
 
-- ``StubEmbedder`` — deterministic random vectors, no model download.  Used
+- ``StubEmbedder``: deterministic random vectors, no model download.  Used
   in tests and as a placeholder when the heavy ML deps are not installed.
-- ``ColPaliEmbedder`` — wraps ``colpali-engine`` (ColPali / ColQwen2).
+- ``ColPaliEmbedder``: wraps ``colpali-engine`` (ColPali v1.2).
   Requires ``pip install facsimile[embed]``.
+- ``ColQwenEmbedder``: wraps ``colpali-engine`` (ColQwen2).  Same extra.
 
-Both return the same shape: ``list[list[list[float]]]`` — one inner list per
-image, each containing *n_patches* vectors of length *dim* (128 for ColPali).
+``make_embedder(name)`` builds one of them by name (``"stub"``, ``"colpali"``
+or ``"colqwen"``); the API uses it to honour ``FACSIMILE_EMBEDDER``.
+
+All three return the same shape, ``list[list[list[float]]]``: one inner list
+per image, each containing *n_patches* vectors of length *dim* (128 for ColPali).
 """
 
 from __future__ import annotations
@@ -19,6 +23,9 @@ import numpy as np
 from PIL import Image
 
 COLPALI_DIM = 128
+
+EMBEDDER_NAMES = ("stub", "colpali", "colqwen")
+"""Names accepted by :func:`make_embedder` and by the API's ``FACSIMILE_EMBEDDER``."""
 
 
 @runtime_checkable
@@ -161,3 +168,45 @@ class ColQwenEmbedder:
         with self._torch.no_grad():
             embeddings = self._model(**batch)
         return [emb.float().cpu().tolist() for emb in embeddings]
+
+
+def make_embedder(
+    name: str = "stub",
+    *,
+    model_name: str | None = None,
+    device: str = "cpu",
+) -> Embedder:
+    """Build an embedder by name.
+
+    Args:
+        name: ``"stub"``, ``"colpali"`` or ``"colqwen"``.  Case and surrounding
+            spaces are ignored.
+        model_name: Hugging Face checkpoint for the model embedders.  ``None``
+            or an empty string keeps the class default
+            (``vidore/colpali-v1.2`` or ``vidore/colqwen2-v1.0``).
+        device: Torch device for the model embedders (``"cpu"``, ``"cuda"``,
+            ``"mps"``).  Ignored by the stub.
+
+    Raises:
+        ValueError: *name* is not one of :data:`EMBEDDER_NAMES`, or a
+            *model_name* was given for the stub, which has no model.
+        ImportError: a model embedder was asked for but ``colpali-engine`` and
+            ``torch`` are not installed (``pip install facsimile[embed]``).
+    """
+    key = name.strip().lower()
+    if key not in EMBEDDER_NAMES:
+        raise ValueError(
+            f"Unknown embedder {name!r}; expected one of: {', '.join(EMBEDDER_NAMES)}"
+        )
+    if key == "stub":
+        if model_name:
+            raise ValueError(
+                f"Model {model_name!r} was given for the stub embedder, which has no "
+                "model; pick colpali or colqwen to load it"
+            )
+        return StubEmbedder()
+    kwargs: dict[str, str] = {"device": device}
+    if model_name:
+        kwargs["model_name"] = model_name
+    cls = ColPaliEmbedder if key == "colpali" else ColQwenEmbedder
+    return cls(**kwargs)

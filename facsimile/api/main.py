@@ -9,6 +9,21 @@ Endpoints
 ``GET  /pages/{doc_id}/{page_num}`` Serve a rasterized page image as PNG.
 ``GET  /viewer``                    Interactive page-highlight viewer (HTML).
 
+Configuration
+-------------
+Read from the environment at startup:
+
+``QDRANT_URL``              Qdrant server URL; unset means in-memory Qdrant.
+``DATA_DIR``                Where page PNGs are written (``facsimile_data``).
+``FACSIMILE_EMBEDDER``      ``stub`` (default), ``colpali`` or ``colqwen``.
+``FACSIMILE_EMBED_MODEL``   Hugging Face checkpoint; unset keeps the default.
+``FACSIMILE_EMBED_DEVICE``  Torch device for the model (``cpu``).
+
+With the default ``stub`` embedder every vector is random, so retrieval
+returns arbitrary pages; startup logs a warning saying so.  An unknown
+embedder name stops startup with a ``ValueError``, and ``colpali`` or
+``colqwen`` without ``pip install facsimile[embed]`` with an ``ImportError``.
+
 State
 -----
 The application holds a module-level :class:`_State` object that is
@@ -20,6 +35,7 @@ lifespan.
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from contextlib import asynccontextmanager
@@ -32,13 +48,15 @@ from qdrant_client import QdrantClient
 
 from facsimile.answer import synthesizer as _synthesizer
 from facsimile.index.store import ensure_collection, get_client, get_memory_client
-from facsimile.ingest.embed import Embedder, StubEmbedder
+from facsimile.ingest.embed import Embedder, StubEmbedder, make_embedder
 from facsimile.ingest.pipeline import ingest_and_store
 from facsimile.ingest.rasterize import rasterize_bytes
 from facsimile.retrieve.retriever import Retriever
 from facsimile.viewer.app import viewer_html
 
 _DEFAULT_DATA_DIR = Path("facsimile_data")
+
+_log = logging.getLogger("facsimile.api")
 
 
 class _State:
@@ -67,11 +85,41 @@ class _State:
 _state = _State()
 
 
+def _embedder_from_env() -> Embedder:
+    """Build the embedder named by ``FACSIMILE_EMBEDDER`` (``stub`` when unset)."""
+    name = os.environ.get("FACSIMILE_EMBEDDER") or "stub"
+    try:
+        embedder = make_embedder(
+            name,
+            model_name=os.environ.get("FACSIMILE_EMBED_MODEL") or None,
+            device=os.environ.get("FACSIMILE_EMBED_DEVICE") or "cpu",
+        )
+    except ValueError as exc:
+        raise ValueError(
+            f"Bad embedder setting: {exc}. Check FACSIMILE_EMBEDDER and "
+            "FACSIMILE_EMBED_MODEL."
+        ) from exc
+    if isinstance(embedder, StubEmbedder):
+        setting = (
+            f"FACSIMILE_EMBEDDER is {name!r}"
+            if os.environ.get("FACSIMILE_EMBEDDER")
+            else "FACSIMILE_EMBEDDER is not set"
+        )
+        _log.warning(
+            "%s, so the API is using StubEmbedder: page and query vectors are "
+            "random, and /retrieve and /ask return arbitrary pages. Set "
+            "FACSIMILE_EMBEDDER=colpali or colqwen (after pip install -e '.[embed]') "
+            "to retrieve by content.",
+            setting,
+        )
+    return embedder
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):  # noqa: ARG001
     qdrant_url = os.environ.get("QDRANT_URL")
     client = get_client(qdrant_url) if qdrant_url else get_memory_client()
-    embedder = StubEmbedder()
+    embedder = _embedder_from_env()
     data_dir = Path(os.environ.get("DATA_DIR", str(_DEFAULT_DATA_DIR)))
     data_dir.mkdir(parents=True, exist_ok=True)
     _state.initialise(client, embedder, data_dir)

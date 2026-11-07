@@ -14,13 +14,26 @@ Visual document RAG using late-interaction page-image embeddings.
 
 M0–M5 complete: Scaffold, Visual embedding, Retrieval, Vision synthesis, Benchmark, and Ship. See [PROGRESS.md](PROGRESS.md) for the full roadmap.
 
+Known limits (details in [PROGRESS.md](PROGRESS.md)):
+
+- The API defaults to the stub embedder, so retrieval over HTTP is random until you set `FACSIMILE_EMBEDDER` (see [Environment variables](#environment-variables)).
+- Citations are bare page numbers, so with several documents indexed an answer cannot say which document page 7 came from.
+- Re-ingesting a shorter PDF through `POST /ingest` leaves its old page images on disk.
+
 ## Quickstart
 
 ```bash
 pip install -e ".[dev]"
 
-# Start the API (in-memory Qdrant; add QDRANT_URL for a persistent server)
+# Start the API (in-memory Qdrant; add QDRANT_URL for a persistent server).
+# With no FACSIMILE_EMBEDDER set it uses the stub embedder, whose vectors are
+# random, so retrieval returns arbitrary pages. Fine for trying the endpoints.
 uvicorn facsimile.api.main:app --reload
+
+# For real retrieval, install the model extra and pick ColPali or ColQwen2
+# (the first start downloads the model weights from Hugging Face, several GB):
+#   pip install -e ".[embed]"
+#   FACSIMILE_EMBEDDER=colpali uvicorn facsimile.api.main:app
 
 # Ingest a PDF
 curl -X POST http://localhost:8000/ingest \
@@ -139,6 +152,11 @@ pytest
 | `QDRANT_URL` | *(in-memory)* | Qdrant server URL, e.g. `http://localhost:6333` |
 | `DATA_DIR` | `facsimile_data` | Directory where rasterized page images are stored |
 | `ANTHROPIC_API_KEY` | *(required for /ask)* | API key for the Claude vision model |
+| `FACSIMILE_EMBEDDER` | `stub` | Page and query embedder: `stub` (random vectors, no model), `colpali` or `colqwen` (both need `pip install -e ".[embed]"`). An unknown name stops startup. |
+| `FACSIMILE_EMBED_MODEL` | *(model default)* | Hugging Face checkpoint for `colpali` (default `vidore/colpali-v1.2`) or `colqwen` (default `vidore/colqwen2-v1.0`). Setting it with the stub stops startup. |
+| `FACSIMILE_EMBED_DEVICE` | `cpu` | Torch device for the model, e.g. `cuda` or `mps`. |
+
+Vectors from different embedders cannot be compared, so after changing `FACSIMILE_EMBEDDER` or `FACSIMILE_EMBED_MODEL` against a persistent Qdrant, re-ingest your documents.
 
 ## Architecture
 
