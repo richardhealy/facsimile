@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 from unittest.mock import patch
 
 import pypdfium2 as pdfium
@@ -10,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
+import facsimile.ingest.embed as embed_module
 from facsimile.answer.synthesizer import Answer as SynthAnswer
 from facsimile.api.main import _state, app
 from facsimile.index.store import ensure_collection, get_memory_client
@@ -298,3 +300,66 @@ def test_viewer_contains_pages_endpoint_reference():
 def test_viewer_html_has_query_input():
     res = client.get("/viewer")
     assert "query-input" in res.text
+
+
+# ---------------------------------------------------------------------------
+# Startup: picking the embedder from the environment
+# ---------------------------------------------------------------------------
+
+
+class _FakeModelEmbedder:
+    """Stands in for ColPaliEmbedder / ColQwenEmbedder without torch or a download."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def embed_images(self, images):
+        return [[[0.0] * 128] for _ in images]
+
+    def embed_queries(self, texts):
+        return [[[0.0] * 128] for _ in texts]
+
+
+@pytest.fixture
+def startup_env(monkeypatch, tmp_path):
+    """Clean environment for running the real lifespan (in-memory Qdrant, tmp DATA_DIR)."""
+    for name in ("QDRANT_URL", "FACSIMILE_EMBEDDER", "FACSIMILE_EMBED_MODEL", "FACSIMILE_EMBED_DEVICE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    return monkeypatch
+
+
+def test_startup_uses_stub_and_warns_when_no_embedder_is_set(startup_env, caplog):
+    with caplog.at_level(logging.WARNING, logger="facsimile.api"), TestClient(app):
+        assert isinstance(_state.embedder, StubEmbedder)
+    assert "FACSIMILE_EMBEDDER is not set" in caplog.text
+    assert "vectors are random" in caplog.text
+
+
+def test_startup_warns_when_the_stub_is_chosen_explicitly(startup_env, caplog):
+    startup_env.setenv("FACSIMILE_EMBEDDER", "stub")
+    with caplog.at_level(logging.WARNING, logger="facsimile.api"), TestClient(app):
+        assert isinstance(_state.embedder, StubEmbedder)
+    assert "FACSIMILE_EMBEDDER is 'stub'" in caplog.text
+
+
+def test_startup_builds_the_embedder_named_in_the_environment(startup_env, caplog):
+    startup_env.setattr(embed_module, "ColQwenEmbedder", _FakeModelEmbedder)
+    startup_env.setenv("FACSIMILE_EMBEDDER", "colqwen")
+    startup_env.setenv("FACSIMILE_EMBED_MODEL", "vidore/colqwen2.5-v0.2")
+    startup_env.setenv("FACSIMILE_EMBED_DEVICE", "cuda")
+    with caplog.at_level(logging.WARNING, logger="facsimile.api"), TestClient(app) as c:
+        assert isinstance(_state.embedder, _FakeModelEmbedder)
+        assert _state.embedder.kwargs == {
+            "model_name": "vidore/colqwen2.5-v0.2",
+            "device": "cuda",
+        }
+        assert _state.retriever._embedder is _state.embedder
+        assert c.get("/health").status_code == 200
+    assert "vectors are random" not in caplog.text
+
+
+def test_startup_fails_on_an_unknown_embedder(startup_env):
+    startup_env.setenv("FACSIMILE_EMBEDDER", "colbert")
+    with pytest.raises(ValueError, match="FACSIMILE_EMBEDDER"), TestClient(app):
+        pass

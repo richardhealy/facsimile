@@ -27,6 +27,12 @@ must be available to the server process via the `ANTHROPIC_API_KEY` environment 
 | `QDRANT_URL` | *(in-memory)* | Qdrant server URL. Omit to run Qdrant in-process (dev / test). |
 | `DATA_DIR` | `facsimile_data` | Directory where rasterized page PNGs are stored. |
 | `ANTHROPIC_API_KEY` | *(required for `/ask`)* | Anthropic API key used by the vision synthesizer. |
+| `FACSIMILE_EMBEDDER` | `stub` | Embedder for pages and queries: `stub`, `colpali` or `colqwen`. The stub's vectors are random, so `/retrieve` and `/ask` return arbitrary pages, and startup logs a warning saying so. `colpali` and `colqwen` need `pip install -e ".[embed]"`. An unknown name, or a model embedder without the extra installed, stops startup. |
+| `FACSIMILE_EMBED_MODEL` | *(model default)* | Hugging Face checkpoint for the model embedder (`vidore/colpali-v1.2` or `vidore/colqwen2-v1.0` when unset). Setting it while the embedder is `stub` stops startup. |
+| `FACSIMILE_EMBED_DEVICE` | `cpu` | Torch device for the model embedder, e.g. `cuda` or `mps`. |
+
+Vectors from different embedders are not comparable. After changing `FACSIMILE_EMBEDDER` or
+`FACSIMILE_EMBED_MODEL` against a persistent Qdrant (`QDRANT_URL`), re-ingest every document.
 
 ---
 

@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Fixed: 2026-11-08 (embedder setting)
+- The API now picks its embedder at startup from `FACSIMILE_EMBEDDER`: `stub` (the default), `colpali` or `colqwen`. `FACSIMILE_EMBED_MODEL` overrides the Hugging Face checkpoint and `FACSIMILE_EMBED_DEVICE` sets the torch device (`cpu` by default). Before this the server always used `StubEmbedder`, so `/retrieve` and `/ask` returned arbitrary pages whatever was configured, and `docs/architecture.md` described a setting that did not exist.
+- New `make_embedder(name, model_name=None, device="cpu")` and `EMBEDDER_NAMES` in `facsimile/ingest/embed.py`, exported from `facsimile.ingest`.
+- Startup fails with a clear error for an unknown embedder name, for a model name given with the stub, and for `colpali` or `colqwen` without `pip install -e ".[embed]"`, rather than quietly running the stub.
+- With the stub, startup logs a warning that retrieval is random and names the setting to change.
+- README, `docs/api.md` and `docs/architecture.md` document the three variables and the need to re-ingest after changing the embedder.
+- 13 new tests (9 for `make_embedder`, 4 for startup); 174 total.
+
 ### Fixed: 2026-10-06 (re-ingest)
 - Page point IDs are now the first 8 bytes of a SHA-256 hash of `[doc_id, page_num]` instead of Python's `hash()`. Python salts string hashes per process, so the old IDs changed on every restart and each re-ingest into a persistent Qdrant added a second copy of every page (three re-ingests of a 3-page PDF left 9 points, and the top 4 results were copies of page 1).
 - `ingest_and_store()` now deletes any other point stored for the document after upserting the new pages, using the new `delete_other_pages()` in `facsimile/index/store.py`. A document that gets shorter no longer keeps its removed pages, and duplicates left by the old ID scheme are cleared the first time a document is re-ingested.

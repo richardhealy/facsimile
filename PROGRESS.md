@@ -20,9 +20,10 @@
 ## Maintenance
 
 - [x] 2026-10-06: page point IDs no longer depend on Python's per-process string hash salt, and re-ingesting a document replaces its points. Before this, each re-ingest after a restart added another copy of every page to a persistent Qdrant, and a document that got shorter kept its old pages. 9 regression tests, 161 total.
+- [x] 2026-11-08: the API picks its embedder from `FACSIMILE_EMBEDDER` (`stub`, `colpali` or `colqwen`), with `FACSIMILE_EMBED_MODEL` and `FACSIMILE_EMBED_DEVICE`, through the new `make_embedder()`. Before this the server always used the stub, whatever was set, and nothing said its retrieval was random. An unknown name or a missing `embed` extra now stops startup, and the stub logs a warning. 13 new tests, 174 total.
 
 ## Known issues
 
-- The API always starts with `StubEmbedder` (random vectors), so `/retrieve` and `/ask` over HTTP return arbitrary pages. There is no setting to pick ColPali or ColQwen yet, although `docs/architecture.md` says the embedder can be swapped via the environment.
+- The API still defaults to `StubEmbedder` (random vectors) when `FACSIMILE_EMBEDDER` is not set, so a default server returns arbitrary pages from `/retrieve` and `/ask`. Startup now warns about it. Whether the default should become a real model (torch and a multi-GB download in the default install) is an open decision.
 - Citations are bare page numbers. With more than one document indexed, two retrieved pages can share a number (page 7 of two reports), and `cited_pages` cannot say which document the answer came from.
 - Re-ingesting a shorter document through `POST /ingest` leaves the old page images in `DATA_DIR`, so `GET /pages/{doc_id}/{n}` still serves pages the document no longer has. They are no longer retrieved.

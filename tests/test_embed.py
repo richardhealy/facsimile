@@ -14,7 +14,14 @@ from PIL import Image
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
-from facsimile.ingest.embed import COLPALI_DIM, Embedder, StubEmbedder
+import facsimile.ingest.embed as embed_module
+from facsimile.ingest.embed import (
+    COLPALI_DIM,
+    EMBEDDER_NAMES,
+    Embedder,
+    StubEmbedder,
+    make_embedder,
+)
 from facsimile.ingest.pipeline import ingest_and_store, ingest_pdf
 from facsimile.index.store import COLLECTION_NAME, ensure_collection, get_memory_client
 
@@ -91,6 +98,67 @@ class TestStubEmbedder:
     def test_empty_image_list(self):
         emb = StubEmbedder()
         assert emb.embed_images([]) == []
+
+
+# ---------------------------------------------------------------------------
+# make_embedder (picks the embedder by name, used by the API at startup)
+# ---------------------------------------------------------------------------
+
+
+class _FakeModelEmbedder:
+    """Stands in for ColPaliEmbedder / ColQwenEmbedder without torch or a download."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def embed_images(self, images):
+        return [[[0.0] * COLPALI_DIM] for _ in images]
+
+    def embed_queries(self, texts):
+        return [[[0.0] * COLPALI_DIM] for _ in texts]
+
+
+class TestMakeEmbedder:
+    def test_names_cover_every_shipped_embedder(self):
+        assert EMBEDDER_NAMES == ("stub", "colpali", "colqwen")
+
+    def test_stub_is_the_default(self):
+        assert isinstance(make_embedder(), StubEmbedder)
+
+    def test_name_is_case_and_space_insensitive(self, monkeypatch):
+        monkeypatch.setattr(embed_module, "ColPaliEmbedder", _FakeModelEmbedder)
+        assert isinstance(make_embedder("  ColPali "), _FakeModelEmbedder)
+
+    def test_colpali_gets_device_and_keeps_its_default_model(self, monkeypatch):
+        monkeypatch.setattr(embed_module, "ColPaliEmbedder", _FakeModelEmbedder)
+        emb = make_embedder("colpali", device="mps")
+        assert emb.kwargs == {"device": "mps"}
+
+    def test_colqwen_gets_model_name_and_device(self, monkeypatch):
+        monkeypatch.setattr(embed_module, "ColQwenEmbedder", _FakeModelEmbedder)
+        emb = make_embedder("colqwen", model_name="vidore/colqwen2.5-v0.2", device="cuda")
+        assert emb.kwargs == {"model_name": "vidore/colqwen2.5-v0.2", "device": "cuda"}
+
+    def test_empty_model_name_keeps_the_default_model(self, monkeypatch):
+        monkeypatch.setattr(embed_module, "ColQwenEmbedder", _FakeModelEmbedder)
+        emb = make_embedder("colqwen", model_name="")
+        assert emb.kwargs == {"device": "cpu"}
+
+    def test_unknown_name_is_rejected_with_the_valid_names(self):
+        with pytest.raises(ValueError, match="'colbert'.*stub, colpali, colqwen"):
+            make_embedder("colbert")
+
+    def test_model_name_with_stub_is_rejected(self):
+        with pytest.raises(ValueError, match="stub"):
+            make_embedder("stub", model_name="vidore/colpali-v1.2")
+
+    @pytest.mark.skipif(
+        __import__("importlib.util").util.find_spec("colpali_engine") is not None,
+        reason="colpali-engine is installed, so the missing-extra error cannot happen",
+    )
+    def test_colpali_without_the_embed_extra_says_how_to_install_it(self):
+        with pytest.raises(ImportError, match=r"pip install facsimile\[embed\]"):
+            make_embedder("colpali")
 
 
 # ---------------------------------------------------------------------------

@@ -138,8 +138,17 @@ from any specific model. The three implementations share the same interface:
 | `ColPaliEmbedder` | ColPali v1.2 from Hugging Face (`facsimile[embed]`) |
 | `ColQwenEmbedder` | ColQwen2 v1.0 from Hugging Face (`facsimile[embed]`) |
 
-The API server defaults to `StubEmbedder` at startup; swap via environment or
-direct construction to use a real model.
+`make_embedder(name, model_name=None, device="cpu")` builds one of the three by
+name. At startup the API calls it with `FACSIMILE_EMBEDDER` (`stub` when unset),
+`FACSIMILE_EMBED_MODEL` and `FACSIMILE_EMBED_DEVICE`. The default stays
+`StubEmbedder`, so a plain `pip install -e ".[dev]"` server starts without torch
+or a model download, but its retrieval is random and startup logs a warning
+saying so. An unknown name, a model name given with the stub, or a model
+embedder without the `embed` extra stops startup rather than falling back to
+the stub. Library callers can still construct any embedder directly.
+
+Up to 8 November 2026 the API always used `StubEmbedder`, and there was no
+setting to change it.
 
 ### Vision-LLM synthesis
 
