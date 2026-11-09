@@ -67,6 +67,12 @@ served by `GET /pages/{doc_id}/{page_num}` and displayed in the viewer.
 The `doc_id` used for all subsequent calls is derived from the uploaded filename stem
 (e.g. uploading `annual_report_2024.pdf` creates `doc_id = "annual_report_2024"`).
 
+Uploading a file with the same name again replaces that document. Once the new version is
+indexed, any page image numbered beyond its last page is deleted, so after re-ingesting a
+shorter version `GET /pages` returns `404` for the pages it no longer has. Other files in the
+document's folder are left alone. If indexing fails, the old extra pages stay, because the
+index still has them.
+
 **Response `200 application/json`**
 
 ```json
@@ -86,6 +92,7 @@ The `doc_id` used for all subsequent calls is derived from the uploaded filename
 | Status | Condition |
 |---|---|
 | `422` | The uploaded file does not have a `.pdf` extension. |
+| `422` | The filename stem is only dots (`...pdf` gives `..`, `..pdf` gives `.`), which would name `DATA_DIR` or its parent rather than a document folder. |
 | `503` | The vector store has not finished initialising (transient at startup). |
 
 **Example**
@@ -243,7 +250,7 @@ The raw PNG bytes of the rasterized page.
 
 | Status | Condition |
 |---|---|
-| `404` | The page image does not exist (document not ingested, or wrong page number). |
+| `404` | The page image does not exist (document not ingested, or wrong page number), or `doc_id` is `.` or `..`. |
 | `503` | Store not initialised. |
 
 **Example**
