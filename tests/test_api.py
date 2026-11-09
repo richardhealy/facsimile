@@ -123,6 +123,72 @@ def test_ingest_saves_page_images(tmp_path):
     assert (tmp_path / "doc" / "page_0002.png").exists()
 
 
+def _ingest(name: str, n_pages: int):
+    return client.post(
+        "/ingest", files={"file": (name, _make_pdf(n_pages), "application/pdf")}
+    )
+
+
+def test_reingest_shorter_pdf_removes_the_old_page_images(tmp_path):
+    assert _ingest("doc.pdf", 3).status_code == 200
+    assert _ingest("doc.pdf", 1).json()["pages"] == 1
+    page_dir = tmp_path / "doc"
+    assert sorted(p.name for p in page_dir.iterdir()) == ["page_0001.png"]
+
+
+def test_reingest_shorter_pdf_stops_serving_the_removed_pages():
+    _ingest("doc.pdf", 3)
+    _ingest("doc.pdf", 1)
+    assert client.get("/pages/doc/1").status_code == 200
+    assert client.get("/pages/doc/2").status_code == 404
+    assert client.get("/pages/doc/3").status_code == 404
+
+
+def test_reingest_leaves_other_files_in_the_page_folder(tmp_path):
+    _ingest("doc.pdf", 2)
+    notes = tmp_path / "doc" / "notes.txt"
+    notes.write_text("kept")
+    cover = tmp_path / "doc" / "page_cover.png"
+    cover.write_bytes(b"kept")
+    _ingest("doc.pdf", 1)
+    assert notes.read_text() == "kept"
+    assert cover.read_bytes() == b"kept"
+
+
+def test_reingest_leaves_other_documents_alone(tmp_path):
+    _ingest("long.pdf", 3)
+    _ingest("short.pdf", 1)
+    _ingest("short.pdf", 1)
+    assert len(list((tmp_path / "long").glob("page_*.png"))) == 3
+    assert client.get("/pages/long/3").status_code == 200
+
+
+def test_failed_reingest_keeps_the_pages_the_index_still_has(tmp_path):
+    _ingest("doc.pdf", 3)
+    with (
+        patch(
+            "facsimile.api.main.ingest_and_store",
+            side_effect=RuntimeError("embed failed"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
+        _ingest("doc.pdf", 1)
+    # The index still holds pages 2 and 3, so their images must stay servable.
+    assert (tmp_path / "doc" / "page_0003.png").exists()
+    assert client.get("/pages/doc/3").status_code == 200
+
+
+@pytest.mark.parametrize("name", ["...pdf", "..pdf", "...PDF"])
+def test_ingest_rejects_a_filename_whose_stem_is_dots(tmp_path, name):
+    # Path("...pdf").stem is "..", which would put the page images (and the
+    # stale-page cleanup) outside DATA_DIR.
+    res = _ingest(name, 1)
+    assert res.status_code == 422
+    assert "name" in res.json()["detail"]
+    assert not list(tmp_path.parent.glob("page_*.png"))
+    assert not list(tmp_path.glob("page_*.png"))
+
+
 # ---------------------------------------------------------------------------
 # POST /retrieve
 # ---------------------------------------------------------------------------
@@ -247,6 +313,15 @@ def test_pages_missing_page_num_returns_404():
     pdf = _make_pdf(1)
     client.post("/ingest", files={"file": ("doc.pdf", pdf, "application/pdf")})
     res = client.get("/pages/doc/99")
+    assert res.status_code == 404
+
+
+@pytest.mark.parametrize("doc_id", ["%2E%2E", "%2E"])
+def test_pages_does_not_serve_images_outside_a_document_folder(tmp_path, doc_id):
+    # A PNG named like a page, above DATA_DIR and in DATA_DIR itself.
+    (tmp_path.parent / "page_0001.png").write_bytes(b"outside")
+    (tmp_path / "page_0001.png").write_bytes(b"outside")
+    res = client.get(f"/pages/{doc_id}/1")
     assert res.status_code == 404
 
 

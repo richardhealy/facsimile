@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Fixed: 2026-11-09 (stale page images)
+- Re-ingesting a shorter document through `POST /ingest` now deletes its page images numbered beyond the new last page, so `GET /pages/{doc_id}/{n}` returns 404 for pages the document no longer has (a 3-page `report.pdf` re-ingested as 1 page kept serving pages 2 and 3). Other files in the document's folder, including PNGs not named `page_<number>.png`, are left alone, and the cleanup runs only after the index update succeeds, so a failed re-ingest keeps the images of the pages the index still holds.
+- `POST /ingest` refuses with 422 a filename whose stem is only dots. `Path("...pdf").stem` is `..`, so such an upload wrote its page images to the folder above `DATA_DIR` (and the new cleanup would have deleted files there); `..pdf` used `DATA_DIR` itself as the document folder.
+- `GET /pages/{doc_id}/{n}` returns 404 for a `doc_id` of `.` or `..`; before, `GET /pages/%2E%2E/1` served a `page_0001.png` from the folder above `DATA_DIR`.
+- `docs/api.md`, `docs/architecture.md` and `docs/openapi.json` describe the re-ingest behaviour and the new 422; the README drops the stale-images known limit.
+- 10 new tests (7 fail on the previous code); 184 total.
+
 ### Fixed: 2026-11-08 (embedder setting)
 - The API now picks its embedder at startup from `FACSIMILE_EMBEDDER`: `stub` (the default), `colpali` or `colqwen`. `FACSIMILE_EMBED_MODEL` overrides the Hugging Face checkpoint and `FACSIMILE_EMBED_DEVICE` sets the torch device (`cpu` by default). Before this the server always used `StubEmbedder`, so `/retrieve` and `/ask` returned arbitrary pages whatever was configured, and `docs/architecture.md` described a setting that did not exist.
 - New `make_embedder(name, model_name=None, device="cpu")` and `EMBEDDER_NAMES` in `facsimile/ingest/embed.py`, exported from `facsimile.ingest`.

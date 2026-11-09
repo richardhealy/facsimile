@@ -58,7 +58,9 @@ flowchart LR
 2. `rasterize_bytes()` decodes the PDF via `pypdfium2` at 150 DPI and returns a
    `list[PIL.Image]`, one per page.
 3. Page PNGs are written to `{DATA_DIR}/{doc_id}/page_NNNN.png` so they can be
-   served later by `GET /pages/{doc_id}/{page_num}`.
+   served later by `GET /pages/{doc_id}/{page_num}`. A filename whose stem is
+   only dots (`...pdf` gives `..`) is refused with a 422, since it would name
+   `DATA_DIR` or its parent.
 4. `Embedder.embed_images()` turns each image into a matrix of patch-level
    vectors `(n_patches, 128)`. The real implementation uses ColPali or ColQwen2;
    `StubEmbedder` emits deterministic random vectors for tests.
@@ -67,6 +69,10 @@ flowchart LR
    so re-ingesting overwrites the same points. `delete_other_pages()` then
    removes any other point stored for that `doc_id`, so a document that lost
    pages does not keep them in the index.
+6. Back in `POST /ingest`, page PNGs numbered beyond the new last page are
+   deleted, so the images on disk match the index. This runs only after the
+   index update succeeds, so a failed re-ingest keeps the images of pages the
+   index still holds.
 
 ### Query flow
 

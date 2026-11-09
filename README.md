@@ -18,7 +18,6 @@ Known limits (details in [PROGRESS.md](PROGRESS.md)):
 
 - The API defaults to the stub embedder, so retrieval over HTTP is random until you set `FACSIMILE_EMBEDDER` (see [Environment variables](#environment-variables)).
 - Citations are bare page numbers, so with several documents indexed an answer cannot say which document page 7 came from.
-- Re-ingesting a shorter PDF through `POST /ingest` leaves its old page images on disk.
 
 ## Quickstart
 

@@ -29,7 +29,7 @@
     "/ingest": {
       "post": {
         "summary": "Ingest",
-        "description": "Upload a PDF; rasterize, embed, and index every page.\n\nThe page images are saved under ``{DATA_DIR}/{doc_id}/`` so they can be\nserved by ``GET /pages/{doc_id}/{page_num}`` and displayed in the viewer.\n\nReturns the ``doc_id`` (derived from the filename stem) and the number of\npages indexed.",
+        "description": "Upload a PDF; rasterize, embed, and index every page.\n\nThe page images are saved under ``{DATA_DIR}/{doc_id}/`` so they can be\nserved by ``GET /pages/{doc_id}/{page_num}`` and displayed in the viewer.\nRe-ingesting a ``doc_id`` replaces its pages: once the new version is\nindexed, page images numbered beyond its last page are deleted.\n\nReturns the ``doc_id`` (derived from the filename stem) and the number of\npages indexed.",
         "operationId": "ingest_ingest_post",
         "requestBody": {
           "content": {

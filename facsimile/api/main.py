@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -206,6 +207,26 @@ def _page_image_path(data_dir: Path, doc_id: str, page_num: int) -> Path:
     return data_dir / doc_id / f"page_{page_num:04d}.png"
 
 
+def _is_dots(doc_id: str) -> bool:
+    """True for ``.`` and ``..``, which name DATA_DIR or its parent, not a document."""
+    return doc_id in {".", ".."}
+
+
+_PAGE_IMAGE_NAME = re.compile(r"page_(\d+)\.png")
+
+
+def _remove_stale_page_images(page_dir: Path, page_count: int) -> None:
+    """Delete page PNGs in *page_dir* numbered above *page_count*.
+
+    These are left over from an earlier, longer version of the document.
+    Only files named ``page_<number>.png`` are touched.
+    """
+    for path in page_dir.glob("page_*.png"):
+        match = _PAGE_IMAGE_NAME.fullmatch(path.name)
+        if match and int(match.group(1)) > page_count:
+            path.unlink(missing_ok=True)
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -222,6 +243,8 @@ async def ingest(file: UploadFile = File(...)) -> IngestResponse:
 
     The page images are saved under ``{DATA_DIR}/{doc_id}/`` so they can be
     served by ``GET /pages/{doc_id}/{page_num}`` and displayed in the viewer.
+    Re-ingesting a ``doc_id`` replaces its pages: once the new version is
+    indexed, page images numbered beyond its last page are deleted.
 
     Returns the ``doc_id`` (derived from the filename stem) and the number of
     pages indexed.
@@ -232,8 +255,16 @@ async def ingest(file: UploadFile = File(...)) -> IngestResponse:
     if not filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=422, detail="Only PDF files are accepted")
 
-    pdf_bytes = await file.read()
     doc_id = Path(filename).stem
+    if _is_dots(doc_id):
+        # Path("...pdf").stem is ".." (and "..pdf" gives "."), which would put
+        # the page folder outside DATA_DIR or make DATA_DIR itself the folder.
+        raise HTTPException(
+            status_code=422,
+            detail="The filename needs a name before .pdf, not only dots",
+        )
+
+    pdf_bytes = await file.read()
 
     page_dir = _state.data_dir / doc_id
     page_dir.mkdir(parents=True, exist_ok=True)
@@ -250,6 +281,10 @@ async def ingest(file: UploadFile = File(...)) -> IngestResponse:
         ingest_and_store(tmp_path, _state.embedder, _state.client, doc_id=doc_id)
     finally:
         tmp_path.unlink(missing_ok=True)
+
+    # Only after the index has dropped the extra pages, so a failed re-ingest
+    # never leaves indexed pages without their images.
+    _remove_stale_page_images(page_dir, len(page_images))
 
     return IngestResponse(doc_id=doc_id, pages=len(page_images))
 
@@ -328,7 +363,7 @@ def get_page(doc_id: str, page_num: int) -> Response:
     if _state.data_dir is None:
         raise HTTPException(status_code=503, detail="Store not initialised")
     img_path = _page_image_path(_state.data_dir, doc_id, page_num)
-    if not img_path.exists():
+    if _is_dots(doc_id) or not img_path.exists():
         raise HTTPException(
             status_code=404,
             detail=f"Page {page_num} of '{doc_id}' not found",
